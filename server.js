@@ -1,53 +1,99 @@
-'use strict';
-
-// Load array of notes
-
-
-// INSERT EXPRESS APP CODE HERE...
+'use strict'
 const express = require('express');
-//const morgan = require('morgan');
-const { PORT } = require('./config');
-const data = require('./db/notes');
-const simDB = require('./db/simDB');  
-const notes = simDB.initialize(data); 
-const app = express();
 
-// ADD STATIC SERVER HERE
+// Simple In-Memory Database
+const data = require('./db/notes');
+const simDB = require('./db/simDB');
+const notes = simDB.initialize(data);
+
+const logger = require('./middleware/logger');
+const { PORT } = require('./config');
+
+// Create an Express application
+const app = express();
+const morgan = require('morgan');
+// Log all requests
+app.use(logger);
+
+// Create a static webserver
 app.use(express.static('public'));
 
+// Parse request body
+app.use(express.json());
+app.use(morgan('common'));
 
+// Get All (and search by query)
+app.get('/api/notes', (req, res, next) => {
+  const { searchTerm } = req.query;
 
-app.get('/api/notes', (req, res) => {
-    
-  const searchTerm = req.query.searchTerm;
-  if(searchTerm){
-    let filteredList = data.filter(function(item){
-      return item.title.includes(searchTerm);
-    });
-    res.json(filteredList);
-  } else{
-    res.json(data);
-  }
-    
+  notes.filter(searchTerm, (err, list) => {
+    if (err) {
+      return next(err);
+    }
+    res.json(list);
+  });
 });
-app.get('/api/notes/:id', (req, res) => {
+
+// Get a single item
+app.get('/api/notes/:id', (req, res, next) => {
   const id = req.params.id;
-  res.json(data.find(item => item.id === Number(id)));
+
+  notes.find(id, (err, item) => {
+    if (err) {
+      return next(err);
+    }
+    if (item) {
+      res.json(item);
+    } else {
+      next();
+    }
+  });
 });
 
-app.get('/boom', (req, res, next) => {
-  throw new Error('Boom!!');
+// Put update an item
+app.put('/api/notes/:id', (req, res, next) => {
+  const id = req.params.id;
+
+  /***** Never trust users - validate input *****/
+  const updateObj = {};
+  const updateableFields = ['title', 'content'];
+
+  updateableFields.forEach(field => {
+    if (field in req.body) {
+      updateObj[field] = req.body[field];
+    }
+  });
+
+  /***** Never trust users - validate input *****/
+  if (!updateObj.title) {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return next(err);
+  }
+
+  notes.update(id, updateObj, (err, item) => {
+    if (err) {
+      return next(err);
+    }
+    if (item) {
+      res.json(item);
+    } else {
+      next();
+    }
+  });
 });
 
 
+
+// Catch-all 404
 app.use(function (req, res, next) {
-  let err = new Error('Not Found');
+  const err = new Error('Not Found');
   err.status = 404;
-  res.status(404).json({ message: 'Not Found' });
+  next(err);
 });
-  
 
-
+// Catch-all Error handler
+// NOTE: we'll prevent stacktrace leak in later exercise
 app.use(function (err, req, res, next) {
   res.status(err.status || 500);
   res.json({
@@ -56,8 +102,7 @@ app.use(function (err, req, res, next) {
   });
 });
 
-
-
+// Listen for incoming connections
 app.listen(PORT, function () {
   console.info(`Server listening on ${this.address().port}`);
 }).on('error', err => {

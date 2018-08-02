@@ -18,17 +18,19 @@ router.get('/', (req, res, next) => {
 // Get a single item
 router.get('/:id', (req, res, next) => {
   const id = req.params.id;
-  notes.find(id, (err, item) => {
-    if (err) {
-      return next(err);
-    }
-    if (item) {
-      res.json(item);
-    } else {
-      next();
-    }
-  });
+  notes.find(id)
+    .then(item => {
+      if (item) {
+        res.json(item);
+      } else {
+        next();
+      }
+    })
+    .catch(err => {
+      next(err);
+    });
 });
+
 // Put update an item
 router.put('/:id', (req, res, next) => {
   const id = req.params.id;
@@ -46,15 +48,58 @@ router.put('/:id', (req, res, next) => {
     err.status = 400;
     return next(err);
   }
-  notes.update(id, updateObj, (err, item) => {
+  notes.update(id,updateObj)
+    .then(item => {
+      if(item){
+        res.json(item);
+      } else {
+        next();
+      }
+    })
+    .catch(err => {
+      next(err);
+    });
+});
+
+// Post (insert) an item
+router.post('/', (req, res, next) => {
+  const { title, content } = req.body;
+
+  const newItem = { title, content };
+  /***** Never trust users - validate input *****/
+  if (!newItem.title) {
+    const err = new Error('Missing `title` in request body');
+    err.status = 400;
+    return next(err);
+  }
+
+  notes.create(newItem, (err, item) => {
     if (err) {
       return next(err);
     }
     if (item) {
-      res.json(item);
+      res.location(`http://${req.headers.host}/notes/${item.id}`).status(201).json(item);
     } else {
       next();
     }
   });
 });
+
+router.delete('/:id', (req, res, next) => {
+  const id = req.params.id;
+  notes.delete(id, (err , item) => {
+    if (err) {
+      return next(err);
+    }
+    if (id) {
+      res.location(`http://${req.headers.host}/notes/${item.id}`).status(204).json('No Content');
+    } else {
+      next();
+    }
+    
+  });
+});
+  
+
+
 module.exports = router;

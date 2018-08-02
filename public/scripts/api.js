@@ -40,7 +40,7 @@ const api = {
       dataType: 'json',
       processData: false,
       data: JSON.stringify(obj),
-      success: callback
+      
     });
   },
 

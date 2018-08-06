@@ -62,7 +62,7 @@ const noteful = (function () {
         .then(searchResponse => {
           store.notes = searchResponse;
           render();
-      });
+        });
 
     });
   }
@@ -127,16 +127,16 @@ const noteful = (function () {
       const noteId = getNoteIdFromElement(event.currentTarget);
 
       api.remove(noteId)
-      .then(() => {
-        return api.search(store.currentSearchTerm)
-      } )
-       .then(searchResponse =>{
-        store.notes = searchResponse;
-        if (noteId === store.currentNote.id) {
-          store.currentNote = {};
-        }
-        render();
-       })
+        .then(() => {
+          return api.search(store.currentSearchTerm);
+        } )
+        .then(searchResponse =>{
+          store.notes = searchResponse;
+          if (noteId === store.currentNote.id) {
+            store.currentNote = {};
+          }
+          render();
+        });
         
     });
   }

@@ -33,7 +33,7 @@ const api = {
   },
 
   create: function (obj) {
-   return $.ajax({
+    return $.ajax({
       type: 'POST',
       url: '/api/notes',
       contentType: 'application/json',
